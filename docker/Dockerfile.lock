@@ -1,0 +1,16 @@
+FROM python:3.9
+
+RUN groupadd -r app && useradd -r -g app app
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=on
+ENV PIP_NO_CACHE_DIR=off
+ENV PYTHONDONTWRITEBYTECODE=true
+ENV PYTHONFAULTHANDLER=true
+ENV PYTHONUNBUFFERED=true
+
+RUN pip install --no-compile poetry
+
+COPY . /
+RUN poetry lock
+
+CMD ["cp", "/poetry.lock", "/output/poetry.lock"]

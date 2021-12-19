@@ -92,7 +92,7 @@ def to_unique_submits_df(submits):
 
 def main():
     submits = load_author(248409)
-    submits.append((123123123, 248409, 1082))
+    # submits.append((123123123, 248409, 1082))
     sub_df = to_unique_submits_df(submits)
     model = tc.load_model('prod_model')
     # print(model.recommend(users=[248409]))
