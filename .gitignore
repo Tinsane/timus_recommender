@@ -1,2 +1,5 @@
 	model.zip
 	prod_model/
+  .idea/
+	my-data.sqlite
+	token
