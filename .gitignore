@@ -1,6 +1,6 @@
-	model.zip
-	prod_model/
-  .idea/
-  logs/
-	my-data.sqlite
-	token
+model.zip
+prod_model/
+.idea/
+logs/
+my-data.sqlite
+token
