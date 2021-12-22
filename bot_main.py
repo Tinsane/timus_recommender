@@ -68,7 +68,8 @@ def recommend_handler(message: telebot.types.Message) -> None:
     recommendation = model.recommend_from_interactions(sub_df)
     logger.info("Computed recommendations at: %s", time.time())
     bot.send_message(
-        message.from_user.id, "Попробуй решить эти задачи:\n%s" % '\n'.join(map(str, recommendation['problemid'])),
+        message.from_user.id,
+        "Попробуй решить эти задачи:\n%s" % '\n'.join(map(str, recommendation['problemid'])),
     )
 
 
