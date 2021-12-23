@@ -1,4 +1,5 @@
 import datetime
+import enum
 from itertools import islice
 from typing import Any, Callable, Iterator, List, Optional, cast
 
@@ -46,14 +47,27 @@ class ProblemInfo(BaseModel):
     solutions: int
 
 
-class Problem(BaseModel):
+class TimusAPIProblem(BaseModel):
     number: int
     title: str
     limits: str
     text: str
 
+    class Config:
+        frozen = True
 
-class Submit(BaseModel):
+
+class Verdict(str, enum.Enum):
+    # Тут не полный список
+
+    ACCEPTED = 'Accepted'
+    WRONG_ANSWER = 'Wrong answer'
+    MEMORY_LIMIT = 'Memory limit exceeded'
+    COMPILATION_ERROR = 'Compilation error'
+    TIME_LIMIT = 'Time limit exceeded'
+
+
+class TimusAPISubmit(BaseModel):
     submit_id: int
     date: datetime.datetime
     author_id: int
@@ -63,6 +77,9 @@ class Submit(BaseModel):
     test: int
     runtime_ms: int
     memory_kb: int
+
+    class Config:
+        frozen = True
 
 
 class TimusLoader:
@@ -81,14 +98,14 @@ class TimusLoader:
             problems.append(ProblemInfo(number=number, title=title, difficulty=difficulty, solutions=solutions))
         return problems
 
-    def get_problem(self, number: int) -> Problem:
+    def get_problem(self, number: int) -> TimusAPIProblem:
         response = self._session.get(url=self._settings.problem_url, params={'num': number})
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         title = soup.find(**{'class': 'problem_title'}).text
         limits = '\n'.join(soup.find(**{'class': 'problem_limits'}).get_text('<br>').split('<br>'))
         text = soup.find(id='problem_text').prettify()
-        return Problem(number=number, title=title, limits=limits, text=text)
+        return TimusAPIProblem(number=number, title=title, limits=limits, text=text)
 
     def get_submits(
         self,
@@ -97,7 +114,7 @@ class TimusLoader:
         problem_number: Optional[int] = None,
         count: Optional[int] = None,
         from_submit_id: Optional[int] = None,
-    ) -> List[Submit]:
+    ) -> List[TimusAPISubmit]:
         params = {}
         if from_submit_id is not None:
             params['from'] = from_submit_id
@@ -115,7 +132,7 @@ class TimusLoader:
                 continue
             submit_id, date, submit_author_id, _, problem, language, verdict, test, runtime, memory = line.split('\t')
             submits.append(
-                Submit(
+                TimusAPISubmit(
                     submit_id=submit_id,
                     date=date,
                     author_id=submit_author_id,
