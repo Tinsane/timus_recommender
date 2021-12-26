@@ -10,7 +10,7 @@ import telebot
 import turicreate as tc
 
 from config import DBSettings, Settings
-from loader import TimusAPIClient, TimusClientSettings
+from loader import TimusAPIClient, TimusClientSettings, Verdict
 from storage import DBSubmit, DBUser, SubmitStorage, UserStorage
 
 logger = logging.getLogger(__name__)
@@ -86,9 +86,13 @@ class RecommendHandler(IBotHandler):
         logger.info("Started at: %s", time.time())
         user = self._user_storage.get_user(int(message.from_user.id))
         fetch_submits(user, self._submit_storage, self._timus_client)
-        submits = self._submit_storage.get_all_by_author(user.timus_id)
+        ac_submits = [
+            submit
+            for submit in self._submit_storage.get_all_by_author(user.timus_id)
+            if submit.verdict == Verdict.ACCEPTED
+        ]
         logger.info("Loaded submissions at: %s", time.time())
-        sub_df = to_unique_submits_df(submits)
+        sub_df = to_unique_submits_df(ac_submits)
         # TODO : fails with zero submits :(
         # print(model.recommend(users=[248409]))  # noqa=E800
         recommendation = self._model.recommend_from_interactions(sub_df)
