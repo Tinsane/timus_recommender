@@ -4,7 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 import db
-from loader import ProblemModel, TimusAPISubmit
+from src.loader import ProblemModel, TimusAPISubmit
 
 
 class DBUser(BaseModel):

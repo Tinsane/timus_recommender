@@ -1,4 +1,4 @@
-CODE = db storage.py bot_main.py loader.py cli.py
+CODE = db src bot_main.py
 
 ALL = $(CODE)
 

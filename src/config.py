@@ -1,4 +1,4 @@
-from typing import Callable, Iterator, Set
+from typing import Callable, Iterator
 
 import sqlalchemy as sa
 from pydantic import BaseSettings
@@ -36,7 +36,8 @@ class DBSettings(BaseSettings):
         from db import metadata
 
         engine = sa.engine_from_config(
-            {'url': self.url, "connect_args": {'check_same_thread': False}, 'poolclass': StaticPool}, prefix="",
+            {'url': self.url, "connect_args": {'check_same_thread': False}, 'poolclass': StaticPool},
+            prefix="",
         )
         metadata.bind = engine
 

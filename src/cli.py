@@ -3,9 +3,9 @@ from typing import Iterable, Optional
 
 import typer
 
-from config import DBSettings
-from loader import ProblemModel, TimusAPIClient, TimusAPISubmit, TimusClientSettings
-from storage import DBSubmit, ProblemStorage, SubmitStorage
+from src.config import DBSettings
+from src.loader import ProblemModel, TimusAPIClient, TimusAPISubmit, TimusClientSettings
+from src.storage import DBSubmit, ProblemStorage, SubmitStorage
 
 timus_recommender = typer.Typer()
 

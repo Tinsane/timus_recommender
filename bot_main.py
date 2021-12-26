@@ -9,9 +9,9 @@ from typing import Any, List, Optional
 import telebot
 import turicreate as tc
 
-from config import DBSettings, Settings
-from loader import TimusAPIClient, TimusClientSettings, Verdict
-from storage import DBSubmit, DBUser, SubmitStorage, UserStorage
+from src.config import DBSettings, Settings
+from src.loader import TimusAPIClient, TimusClientSettings, Verdict
+from src.storage import DBSubmit, DBUser, SubmitStorage, UserStorage
 
 logger = logging.getLogger(__name__)
 
