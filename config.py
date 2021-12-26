@@ -1,7 +1,7 @@
 from typing import Callable, Iterator, Set
 
 import sqlalchemy as sa
-from pydantic import BaseSettings, Field
+from pydantic import BaseSettings
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.pool import StaticPool
@@ -9,8 +9,6 @@ from sqlalchemy.pool import StaticPool
 
 class Settings(BaseSettings):
     token: str
-    log: str = Field("")
-    create_database: bool = True
 
     class Config:
         env_prefix = 'TIMUS_RECOMMENDER_BOT_'
@@ -32,6 +30,7 @@ class SAUrl(URL):
 
 class DBSettings(BaseSettings):
     url: SAUrl = SAUrl.validate('sqlite:///my-data.sqlite')  # type: ignore
+    need_create_database: bool = True
 
     def setup_db(self) -> None:
         from db import metadata
@@ -40,6 +39,9 @@ class DBSettings(BaseSettings):
             {'url': self.url, "connect_args": {'check_same_thread': False}, 'poolclass': StaticPool}, prefix="",
         )
         metadata.bind = engine
+
+        if self.need_create_database:
+            self.create_database()
 
     def create_database(self) -> None:
         from db.base import metadata

@@ -2,5 +2,8 @@ model.zip
 prod_model/
 .idea/
 logs/
+venv/
 my-data.sqlite
 token
+.mypy_cache
+__pycache__

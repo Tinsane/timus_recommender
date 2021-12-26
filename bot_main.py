@@ -1,18 +1,17 @@
 #!/usr/local/bin/python3
+import abc
 import datetime
 import logging
-import os
 import pathlib
 import time
-from html.parser import HTMLParser
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional
 
-import requests
 import telebot
 import turicreate as tc
 
 from config import DBSettings, Settings
-from storage import SubmitModel, SubmitStorage, UserModel, UserStorage
+from loader import TimusAPIClient, TimusClientSettings
+from storage import DBSubmit, DBUser, SubmitStorage, UserStorage
 
 logger = logging.getLogger(__name__)
 
@@ -22,54 +21,82 @@ class AmazingExceptionHandler:
         logger.exception("Есть пробитие!\n %s", exc)
 
 
-TOKEN = os.environ.get('TIMUS_RECOMMENDER_BOT_TOKEN', default='')
-bot = telebot.TeleBot(TOKEN, exception_handler=AmazingExceptionHandler())
-user_storage = UserStorage()
-submit_storage = SubmitStorage()
-model = tc.load_model('prod_model')
+class IBotHandler(abc.ABC):
+    @abc.abstractmethod
+    def __call__(self, message: telebot.types.Message) -> None:
+        pass
 
 
-@bot.message_handler(commands=['help'])
-def help_handler(message: telebot.types.Message) -> None:
-    bot.reply_to(message, 'Help is on the way!')
+class HelpHandler(IBotHandler):
+    def __init__(self, bot: telebot.TeleBot):
+        self._bot = bot
+
+    def __call__(self, message: telebot.types.Message) -> None:
+        self._bot.reply_to(message, 'Help is on the way!')
 
 
-@bot.message_handler(commands=['start'])
-def start_handler(message: telebot.types.Message) -> None:
-    msg = bot.reply_to(
-        message,
-        f'Привет, {message.from_user.username}!\nНам нужен твой judge id без букв. Например,'
-        f' если твой judge id - это 248409ex, то нужно ввести 248409.',
-    )
-    bot.register_next_step_handler(msg, register_user)
+class StartHandler(IBotHandler):
+    def __init__(
+        self,
+        bot: telebot.TeleBot,
+        user_storage: UserStorage,
+        submit_storage: SubmitStorage,
+        timus_client: TimusAPIClient,
+    ):
+        self._bot = bot
+        self._user_storage = user_storage
+        self._submit_storage = submit_storage
+        self._timus_client = timus_client
+
+    def __call__(self, message: telebot.types.Message) -> None:
+        msg = self._bot.reply_to(
+            message,
+            f'Привет, {message.from_user.username}!\nНам нужен твой judge id без букв. Например,'
+            f' если твой judge id - это 248409ex, то нужно ввести 248409.',
+        )
+        self._bot.register_next_step_handler(msg, self._register_user)
+
+    def _register_user(self, message: telebot.types.Message) -> None:
+        try:
+            user = self._user_storage.create_or_update(message.from_user.id, int(message.text))
+        except Exception:
+            logger.exception("User could not be created")
+            self._bot.send_message(message.from_user.id, 'Какое-то палево, напиши @tinsane')
+        else:
+            self._bot.send_message(message.from_user.id, 'Молодец, возьми с полки пирожок.')
+            fetch_submits(user, self._submit_storage, self._timus_client)
 
 
-def register_user(message: telebot.types.Message) -> None:
-    try:
-        user = user_storage.create_user(message.from_user.id, int(message.text))
-    except Exception:
-        logger.exception("User could not be created")
-        bot.send_message(message.from_user.id, 'Какое-то палево, напиши @tinsane')
-    else:
-        bot.send_message(message.from_user.id, 'Молодец, возьми с полки пирожок.')
-        fetch_submits(user)
+class RecommendHandler(IBotHandler):
+    def __init__(
+        self,
+        bot: telebot.TeleBot,
+        user_storage: UserStorage,
+        submit_storage: SubmitStorage,
+        timus_client: TimusAPIClient,
+        model: Any,
+    ):
+        self._bot = bot
+        self._user_storage = user_storage
+        self._submit_storage = submit_storage
+        self._timus_client = timus_client
+        self._model = model
 
-
-@bot.message_handler(commands=['recommend'])
-def recommend_handler(message: telebot.types.Message) -> None:
-    logger.info("Started at: %s", time.time())
-    user = user_storage.get_user(int(message.from_user.id))
-    fetch_submits(user)
-    submits = submit_storage.get_all(user.timus_id)
-    logger.info("Loaded submissions at: %s", time.time())
-    sub_df = to_unique_submits_df(submits)
-    # TODO : fails with zero submits :(
-    # print(model.recommend(users=[248409]))  # noqa=E800
-    recommendation = model.recommend_from_interactions(sub_df)
-    logger.info("Computed recommendations at: %s", time.time())
-    bot.send_message(
-        message.from_user.id, "Попробуй решить эти задачи:\n%s" % '\n'.join(map(str, recommendation['problemid'])),
-    )
+    def __call__(self, message: telebot.types.Message) -> None:
+        logger.info("Started at: %s", time.time())
+        user = self._user_storage.get_user(int(message.from_user.id))
+        fetch_submits(user, self._submit_storage, self._timus_client)
+        submits = self._submit_storage.get_all_by_author(user.timus_id)
+        logger.info("Loaded submissions at: %s", time.time())
+        sub_df = to_unique_submits_df(submits)
+        # TODO : fails with zero submits :(
+        # print(model.recommend(users=[248409]))  # noqa=E800
+        recommendation = self._model.recommend_from_interactions(sub_df)
+        logger.info("Computed recommendations at: %s", time.time())
+        self._bot.send_message(
+            message.from_user.id,
+            "Попробуй решить эти задачи:\n%s" % '\n'.join(map(str, recommendation['problemid'])),
+        )
 
 
 def setup_logging() -> None:
@@ -90,95 +117,27 @@ def setup_logging() -> None:
     root_logger.addHandler(logging.StreamHandler())
 
 
-def init_database(settings: Settings) -> None:
-    db_settings = DBSettings()
-    db_settings.setup_db()
-    if settings.create_database:
-        db_settings.create_database()
-
-
-class SubmitsParser(HTMLParser):
-    def __init__(self, authorid: int):
-        self._authorid = authorid
-        self.submits: List[Tuple[int, int, int]] = []
-        self.start_parsing = False
-        self.submit_row = False
-        self.parse_id = False
-        self.id: Optional[int] = None
-        self.parse_problem = False
-        super().__init__()
-
-    def handle_starttag(self, tag: str, attrs: Any) -> None:  # noqa : C901
-        if tag == 'table':
-            dattrs = dict(attrs)
-            if dattrs.get('class', '') == 'status':
-                self.start_parsing = True
-        elif not self.start_parsing:
-            return
-
-        if tag == 'tr':
-            dattrs = dict(attrs)
-            if dattrs.get('class', '') in {'even', 'odd'}:
-                self.submit_row = True
-        elif not self.submit_row:
-            return
-
-        if tag == 'td':
-            dattrs = dict(attrs)
-            if dattrs.get('class', '') == 'id':
-                self.parse_id = True
-            elif dattrs.get('class', '') == 'problem':
-                self.parse_problem = True
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == 'table' and self.start_parsing:
-            self.start_parsing = False
-        if tag == 'tr' and self.submit_row:
-            self.submit_row = False
-
-    def handle_data(self, data: str) -> None:
-        if self.parse_id:
-            self.id = int(data)
-            self.parse_id = False
-            return
-        if self.parse_problem:
-            problem = int(data)
-            if self.id is None:
-                raise AssertionError()
-            self.submits.append((self.id, self._authorid, problem))
-            self.parse_problem = False
-            return
-
-
-def fetch_submits(user: UserModel) -> None:
-    last_submit = submit_storage.get_last_submit(user.timus_id)
+def fetch_submits(user: DBUser, submit_storage: SubmitStorage, client: TimusAPIClient) -> None:
+    last_submit = submit_storage.get_last_or_none(user.timus_id)
     fetch_to = last_submit.submit_id if last_submit is not None else 0
-    pagination_token: Optional[int] = None
+    from_submit_id: Optional[int] = None
+    count = 100
     submits = []
     while True:
-        if pagination_token is None:
-            url = f'https://timus.online/status.aspx?author={user.timus_id}&status=accepted&count=100'
-        else:
-            url = f'https://timus.online/status.aspx?author={user.timus_id}&status=accepted&count=100&from={pagination_token}'  # noqa : E501
-        page = requests.get(url)
-        parser = SubmitsParser(user.timus_id)
-        parser.feed(page.text)
-        if len(parser.submits) == 0:
-            break
+        current_submits = client.get_submits(author_id=user.timus_id, count=count, from_submit_id=from_submit_id)
         finished_fetching = False
-        for submit in parser.submits:
-            submit_id, _, _ = submit
-            if submit_id == fetch_to:
+        for submit in current_submits:
+            if submit.submit_id == fetch_to:
                 finished_fetching = True
                 break
             submits.append(submit)
         if finished_fetching:
             break
-        pagination_token = submits[-1][0] - 1
+        from_submit_id = submits[-1].submit_id - 1
     submit_storage.batch_create(submits)
 
 
-def to_unique_submits_df(submits: List[SubmitModel]) -> tc.SFrame:
+def to_unique_submits_df(submits: List[DBSubmit]) -> tc.SFrame:
     problems = {}
     for submit in submits[::-1]:
         problems[submit.problem_id] = (submit.submit_id, submit.timus_user_id)
@@ -194,12 +153,27 @@ def to_unique_submits_df(submits: List[SubmitModel]) -> tc.SFrame:
 
 
 def main() -> None:
-    settings = Settings()
-    init_database(settings)
-    setup_logging()
-    log = logging.getLogger("main")
+    DBSettings().setup_db()
 
-    log.info("Started")
+    settings = Settings()
+    user_storage = UserStorage()
+    submit_storage = SubmitStorage()
+    timus_client = TimusAPIClient.from_settings(TimusClientSettings())
+    model = tc.load_model('prod_model')
+
+    setup_logging()
+
+    logger.info("Started")
+    bot = telebot.TeleBot(settings.token, exception_handler=AmazingExceptionHandler())
+    bot.message_handler(commands=['help'])(HelpHandler(bot))
+    bot.message_handler(commands=['start'])(
+        StartHandler(bot, user_storage=user_storage, submit_storage=submit_storage, timus_client=timus_client)
+    )
+    bot.message_handler(commands=['recommend'])(
+        RecommendHandler(
+            bot, user_storage=user_storage, submit_storage=submit_storage, timus_client=timus_client, model=model
+        )
+    )
 
     if True:
         try:
@@ -208,7 +182,7 @@ def main() -> None:
         # except KeyboardInterrupt:  # noqa : E800
         #     break  # noqa : E800
         except Exception:
-            log.exception("Exception caught by global try/except")
+            logger.exception("Exception caught by global try/except")
 
 
 if __name__ == '__main__':
