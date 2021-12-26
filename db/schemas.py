@@ -9,7 +9,7 @@ class TelegramUser(Base):
 
 
 class Problem(Base):
-    number = sa.Column(sa.Integer, index=True, nullable=False)
+    number = sa.Column(sa.Integer, index=True, nullable=False, unique=True)
     title = sa.Column(sa.Text, nullable=False)
     difficulty = sa.Column(sa.Integer, nullable=False)
     solutions = sa.Column(sa.Integer, nullable=False)

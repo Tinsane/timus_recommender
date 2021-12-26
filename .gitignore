@@ -5,3 +5,5 @@ logs/
 venv/
 my-data.sqlite
 token
+.mypy_cache
+__pycache__

@@ -40,7 +40,7 @@ class TimusLoaderSettings(BaseSettings):
         env_prefix = 'TIMUS_LOADER_'
 
 
-class ProblemInfo(BaseModel):
+class TimusAPIProblemInfo(BaseModel):
     number: int
     title: str
     difficulty: int
@@ -55,6 +55,15 @@ class TimusAPIProblem(BaseModel):
 
     class Config:
         frozen = True
+
+
+class ProblemModel(BaseModel):
+    number: int
+    title: str
+    difficulty: int
+    solutions: int
+    limits: str
+    text: str
 
 
 class Verdict(str, enum.Enum):
@@ -87,7 +96,7 @@ class TimusLoader:
         self._settings = settings
         self._session = requests.Session()
 
-    def get_problems(self) -> List[ProblemInfo]:
+    def get_problems(self) -> List[TimusAPIProblemInfo]:
         response = self._session.get(url=self._settings.problem_set_url, params={'page': 'all'})
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -95,7 +104,7 @@ class TimusLoader:
         problems = []
         for content in islice(table.find_all(**{'class': 'content'}), 1, None):
             _, number, title, _, solutions, difficulty = [x.text for x in content.find_all('td')]
-            problems.append(ProblemInfo(number=number, title=title, difficulty=difficulty, solutions=solutions))
+            problems.append(TimusAPIProblemInfo(number=number, title=title, difficulty=difficulty, solutions=solutions))
         return problems
 
     def get_problem(self, number: int) -> TimusAPIProblem:
