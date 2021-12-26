@@ -7,7 +7,7 @@ from config import DBSettings
 from loader import ProblemModel, TimusAPIClient, TimusAPISubmit, TimusClientSettings
 from storage import DBSubmit, ProblemStorage, SubmitStorage
 
-timus_loader = typer.Typer()
+timus_recommender = typer.Typer()
 
 
 def load_problems() -> None:
@@ -92,10 +92,11 @@ def load_submits(
     typer.echo()
 
 
-if __name__ == "__main__":
-    loader = typer.Typer(name='loader')
-    loader.command()(load_problems)
-    loader.command()(load_submits)
+loader = typer.Typer(name='loader')
+loader.command()(load_problems)
+loader.command()(load_submits)
 
-    timus_loader.add_typer(loader)
-    timus_loader()
+timus_recommender.add_typer(loader)
+
+if __name__ == '__main__':
+    timus_recommender()
