@@ -3,11 +3,17 @@ name = "timus_recommender"
 version = "0.1"
 description = "timus recommender"
 authors = ["kek-lol-cheburek"]
+packages = [
+    { include = '*.py' }
+]
+
+[tool.poetry.scripts]
+recommender = "cli:timus_recommender"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 pyTelegramBotAPI = "^3.7.7"
-pydantic = "^1.8.0"
+pydantic = "*"
 sqlalchemy = "^1.4.0"
 sqlalchemy-utils = "*"
 independency = "^1.0"

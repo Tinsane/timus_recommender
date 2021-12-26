@@ -19,13 +19,16 @@ lock:
 	docker-compose build lock
 	docker-compose run --rm lock
 
-lint:
+black-lint:
 	$(VENV)/bin/black --skip-string-normalization --check $(ALL)
+
+flake8:
 	$(VENV)/bin/flake8 --jobs $(JOBS) --statistics --show-source $(ALL)
-	$(VENV)/bin/mypy $(CODE)
 
 mypy:
 	$(VENV)/bin/mypy $(CODE)
+
+lint: black-lint flake8 mypy
 
 pretty:
 	$(VENV)/bin/isort $(ALL)
