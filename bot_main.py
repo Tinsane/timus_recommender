@@ -10,7 +10,7 @@ import telebot
 import turicreate as tc
 
 from config import DBSettings, Settings
-from loader import TimusLoader, TimusLoaderSettings
+from loader import TimusAPIClient, TimusClientSettings
 from storage import DBSubmit, DBUser, SubmitStorage, UserStorage
 
 logger = logging.getLogger(__name__)
@@ -37,12 +37,16 @@ class HelpHandler(IBotHandler):
 
 class StartHandler(IBotHandler):
     def __init__(
-        self, bot: telebot.TeleBot, user_storage: UserStorage, submit_storage: SubmitStorage, timus_loader: TimusLoader
+        self,
+        bot: telebot.TeleBot,
+        user_storage: UserStorage,
+        submit_storage: SubmitStorage,
+        timus_client: TimusAPIClient,
     ):
         self._bot = bot
         self._user_storage = user_storage
         self._submit_storage = submit_storage
-        self._timus_loader = timus_loader
+        self._timus_client = timus_client
 
     def __call__(self, message: telebot.types.Message) -> None:
         msg = self._bot.reply_to(
@@ -60,7 +64,7 @@ class StartHandler(IBotHandler):
             self._bot.send_message(message.from_user.id, 'Какое-то палево, напиши @tinsane')
         else:
             self._bot.send_message(message.from_user.id, 'Молодец, возьми с полки пирожок.')
-            fetch_submits(user, self._submit_storage, self._timus_loader)
+            fetch_submits(user, self._submit_storage, self._timus_client)
 
 
 class RecommendHandler(IBotHandler):
@@ -69,19 +73,19 @@ class RecommendHandler(IBotHandler):
         bot: telebot.TeleBot,
         user_storage: UserStorage,
         submit_storage: SubmitStorage,
-        timus_loader: TimusLoader,
+        timus_client: TimusAPIClient,
         model: Any,
     ):
         self._bot = bot
         self._user_storage = user_storage
         self._submit_storage = submit_storage
-        self._timus_loader = timus_loader
+        self._timus_client = timus_client
         self._model = model
 
     def __call__(self, message: telebot.types.Message) -> None:
         logger.info("Started at: %s", time.time())
         user = self._user_storage.get_user(int(message.from_user.id))
-        fetch_submits(user, self._submit_storage, self._timus_loader)
+        fetch_submits(user, self._submit_storage, self._timus_client)
         submits = self._submit_storage.get_all_by_author(user.timus_id)
         logger.info("Loaded submissions at: %s", time.time())
         sub_df = to_unique_submits_df(submits)
@@ -113,14 +117,14 @@ def setup_logging() -> None:
     root_logger.addHandler(logging.StreamHandler())
 
 
-def fetch_submits(user: DBUser, submit_storage: SubmitStorage, loader: TimusLoader) -> None:
+def fetch_submits(user: DBUser, submit_storage: SubmitStorage, client: TimusAPIClient) -> None:
     last_submit = submit_storage.get_last_or_none(user.timus_id)
     fetch_to = last_submit.submit_id if last_submit is not None else 0
     from_submit_id: Optional[int] = None
     count = 100
     submits = []
     while True:
-        current_submits = loader.get_submits(author_id=user.timus_id, count=count, from_submit_id=from_submit_id)
+        current_submits = client.get_submits(author_id=user.timus_id, count=count, from_submit_id=from_submit_id)
         finished_fetching = False
         for submit in current_submits:
             if submit.submit_id == fetch_to:
@@ -154,7 +158,7 @@ def main() -> None:
     settings = Settings()
     user_storage = UserStorage()
     submit_storage = SubmitStorage()
-    timus_loader = TimusLoader(TimusLoaderSettings())
+    timus_client = TimusAPIClient.from_settings(TimusClientSettings())
     model = tc.load_model('prod_model')
 
     setup_logging()
@@ -163,11 +167,11 @@ def main() -> None:
     bot = telebot.TeleBot(settings.token, exception_handler=AmazingExceptionHandler())
     bot.message_handler(commands=['help'])(HelpHandler(bot))
     bot.message_handler(commands=['start'])(
-        StartHandler(bot, user_storage=user_storage, submit_storage=submit_storage, timus_loader=timus_loader)
+        StartHandler(bot, user_storage=user_storage, submit_storage=submit_storage, timus_client=timus_client)
     )
     bot.message_handler(commands=['recommend'])(
         RecommendHandler(
-            bot, user_storage=user_storage, submit_storage=submit_storage, timus_loader=timus_loader, model=model
+            bot, user_storage=user_storage, submit_storage=submit_storage, timus_client=timus_client, model=model
         )
     )
 

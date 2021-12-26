@@ -1,23 +1,23 @@
 import time
-from typing import Optional, Iterable
+from typing import Iterable, Optional
 
 import typer
 
-from config import Settings, DBSettings
-from loader import TimusLoader, TimusLoaderSettings, ProblemModel
-from storage import ProblemStorage, SubmitStorage
+from config import DBSettings
+from loader import ProblemModel, TimusAPIClient, TimusAPISubmit, TimusClientSettings
+from storage import DBSubmit, ProblemStorage, SubmitStorage
 
 timus_loader = typer.Typer()
 
 
 def load_problems() -> None:
     DBSettings().setup_db()
-    timus_loader = TimusLoader(TimusLoaderSettings())
+    timus_client = TimusAPIClient.from_settings(TimusClientSettings())
     storage = ProblemStorage()
     typer.echo("Start loading")
-    with typer.progressbar(timus_loader.get_problems()) as problem_meta_list:
+    with typer.progressbar(timus_client.get_problems()) as problem_meta_list:
         for problem_meta in problem_meta_list:
-            problem = timus_loader.get_problem(number=problem_meta.number)
+            problem = timus_client.get_problem(number=problem_meta.number)
             storage.create_or_update(
                 ProblemModel(
                     number=problem.number,
@@ -31,34 +31,49 @@ def load_problems() -> None:
     typer.echo(f"Load {problem_meta_list.length} problems")
 
 
+def _load_all(
+    *,
+    from_submit_id: Optional[int],
+    batch_size: int,
+    interval: float,
+    last_submit: Optional[DBSubmit],
+    timus_client: TimusAPIClient,
+) -> Iterable[TimusAPISubmit]:
+    while True:
+        batch = timus_client.get_submits(from_submit_id=from_submit_id, count=batch_size)
+        for submit in batch:
+            if last_submit is not None and submit.submit_id == last_submit.submit_id:
+                return
+            yield submit
+        from_submit_id = batch[-1].submit_id - 1
+        if len(batch) == 0:
+            return
+        time.sleep(interval)
+
+
 def load_submits(
     from_submit_id: Optional[int] = typer.Option(None),
     interval: float = typer.Option(0.5),
-    batch_size: int = typer.Option(100)
+    batch_size: int = typer.Option(100),
 ) -> None:
     DBSettings().setup_db()
 
-    timus_loader = TimusLoader(TimusLoaderSettings())
+    timus_client = TimusAPIClient.from_settings(TimusClientSettings())
     storage = SubmitStorage()
     last_submit = storage.get_last_or_none()
-
-    def load_all():
-        nonlocal from_submit_id
-        while True:
-            batch = timus_loader.get_submits(from_submit_id=from_submit_id, count=batch_size)
-            for submit in batch:
-                if last_submit is not None and submit.submit_id == last_submit.submit_id:
-                    return
-                yield submit
-            from_submit_id = batch[-1].submit_id - 1
-            if len(batch) == 0:
-                return
-            time.sleep(interval)
 
     typer.echo("Start loading")
     total = 0
     saved = 0
-    with typer.progressbar(load_all()) as submits:
+    with typer.progressbar(
+        _load_all(
+            from_submit_id=from_submit_id,
+            batch_size=batch_size,
+            interval=interval,
+            last_submit=last_submit,
+            timus_client=timus_client,
+        )
+    ) as submits:
         current_batch = []
         for submit in submits:
             total += 1
