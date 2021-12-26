@@ -3,7 +3,8 @@ prod_model/
 .idea/
 logs/
 venv/
-my-data.sqlite
+*.sqlite
+*.db
 token
 .mypy_cache
 __pycache__

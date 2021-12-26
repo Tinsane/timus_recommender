@@ -45,9 +45,9 @@ def _load_all(
             if last_submit is not None and submit.submit_id == last_submit.submit_id:
                 return
             yield submit
-        from_submit_id = batch[-1].submit_id - 1
         if len(batch) == 0:
             return
+        from_submit_id = batch[-1].submit_id - 1
         time.sleep(interval)
 
 
