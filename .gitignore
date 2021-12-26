@@ -8,3 +8,5 @@ venv/
 token
 .mypy_cache
 __pycache__
+.coverage
+.pytest_cache
