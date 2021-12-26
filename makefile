@@ -37,3 +37,10 @@ pretty:
 
 tests:
 	$(VENV)/bin/pytest $(TESTS)
+
+build:
+	docker pull ashibaevid/telegram-recommender:latest || true
+	docker build --cache-from ashibaevid/telegram-recommender:latest -f docker/Dockerfile.code . --tag ${TAG}
+
+publish:
+	docker push ${TAG}

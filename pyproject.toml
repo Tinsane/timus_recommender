@@ -4,14 +4,14 @@ version = "0.1"
 description = "timus recommender"
 authors = ["kek-lol-cheburek"]
 packages = [
-    { include = '*.py' }
+    { include = 'src' }
 ]
 
 [tool.poetry.scripts]
-recommender = "cli:timus_recommender"
+recommender = "src.cli:timus_recommender"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.8.0"
 pyTelegramBotAPI = "^3.7.7"
 pydantic = "*"
 sqlalchemy = "^1.4.0"
@@ -20,6 +20,7 @@ independency = "^1.0"
 typer = "*"
 yarl = "1.1.1"
 beautifulsoup4 = "^4.10.0"
+turicreate = {url = "https://github.com/apple/turicreate/releases/download/6.4.1/turicreate-6.4.1-cp38-cp38-manylinux1_x86_64.whl"}
 
 [tool.poetry.dev-dependencies]
 black = ">19.3b0"
