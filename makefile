@@ -1,4 +1,4 @@
-.PHONY : init black-lint flake8 mypy lint pretty tests
+.PHONY : init black-lint flake8 mypy lint pretty tests build publish
 
 SHELL := /bin/bash
 CODE = db src bot_main.py
