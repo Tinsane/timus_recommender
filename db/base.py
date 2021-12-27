@@ -8,7 +8,6 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 from sqlalchemy.pool.events import event
 
 PK_TYPE = sa.Integer()
-KNOWN_PARTITION_KEYS = {type(sa.Integer()), type(sa.BigInteger())}
 
 convention = {
     "ix": 'ix_%(column_0_label)s',
