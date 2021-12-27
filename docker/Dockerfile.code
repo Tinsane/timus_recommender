@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=true
 WORKDIR /code
 
 RUN apt-get update \
-    && apt-get isntall -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
         gcc \
         vim \
         locales \
