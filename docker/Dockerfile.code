@@ -26,9 +26,7 @@ ENV LANGUAGE en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
-COPY src /code/src
-COPY db /code/db
-COPY bot_main.py /code/bot_main.py
+COPY src/__init__.py /code/src
 COPY pyproject.toml poetry.lock /code/
 
 RUN pip install --no-compile --upgrade pip \
@@ -38,4 +36,10 @@ RUN pip install --no-compile --upgrade pip \
  && poetry install --no-dev --no-interaction --no-ansi \
  && pip uninstall --yes poetry \
  && rm -rf /tmp/.cache/pypoetry \
- && rm -rf /tmp/bytecode
+ && rm -rf /tmp/bytecode \
+ && rm -rf /code/src
+
+
+COPY src /code/src
+COPY db /code/db
+COPY bot_main.py /code/bot_main.py

@@ -43,4 +43,4 @@ build:
 	docker-compose build bot
 
 publish:
-	docker-compose push bot
+	docker-compose push bot || true
