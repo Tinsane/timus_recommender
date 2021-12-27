@@ -7,7 +7,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      TAG: ${{ github.head_ref }}.${{ github.sha }}
+      TAG: ${{ github.ref }}.${{ github.sha }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
