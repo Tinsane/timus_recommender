@@ -1,7 +1,9 @@
+.PHONY : init black-lint flake8 mypy lint pretty tests build publish
+
+SHELL := /bin/bash
 CODE = db src bot_main.py
-
-ALL = $(CODE)
-
+TESTS ?= tests
+ALL = $(CODE) $(TESTS)
 
 VENV ?= venv
 JOBS ?= 4
@@ -34,12 +36,11 @@ pretty:
 	$(VENV)/bin/isort $(ALL)
 	$(VENV)/bin/black --skip-string-normalization $(ALL)
 
-precommit_install:
-	@git init
-	echo '#!/bin/sh\nmake lint\n' > .git/hooks/pre-commit
-	chmod +x .git/hooks/pre-commit
+tests:
+	$(VENV)/bin/pytest $(TESTS)
 
-clear:
-	rm -rf allure-results
-	rm -rf profiling_data
-	rm -rf .mypy_cache
+build:
+	docker-compose build bot
+
+publish:
+	docker-compose push bot || true

@@ -53,7 +53,7 @@ def _load_all(
 
 def load_submits(
     from_submit_id: Optional[int] = typer.Option(None),
-    interval: float = typer.Option(0.5),
+    interval: float = typer.Option(0.01),
     batch_size: int = typer.Option(100),
 ) -> None:
     DBSettings().setup_db()

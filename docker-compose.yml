@@ -8,3 +8,20 @@ services:
       network: host
     volumes:
       - .:/output
+
+  bot:
+    image: "ashibaevid/timus-recommender:${TAG:-latest}"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.code
+      cache_from:
+        - "ashibaevid/timus-recommender:latest"
+    environment:
+      - TIMUS_RECOMMENDER_BOT_TOKEN=${TIMUS_RECOMMENDER_BOT_TOKEN:-unset}
+      - DB_URL=${DB_URL:-sqlite:///my-data.sqlite}
+      - TIMUS_RECOMMENDER_BOT_USE_MOCK_MODEL=${TIMUS_RECOMMENDER_BOT_USE_MOCK_MODEL:-true}
+    volumes:
+      - ./my-data.sqlite:/code/my-data.sqlite
+    command:
+      - python3
+      - bot_main.py

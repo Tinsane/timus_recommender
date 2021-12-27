@@ -190,8 +190,9 @@ class TimusAPIClient:
         problem_number: Optional[int] = None,
         count: Optional[int] = None,
         from_submit_id: Optional[int] = None,
+        space: int = 1,
     ) -> List[TimusAPISubmit]:
-        params = {}
+        params = {'space': space}
         if from_submit_id is not None:
             params['from'] = from_submit_id
         if author_id is not None:

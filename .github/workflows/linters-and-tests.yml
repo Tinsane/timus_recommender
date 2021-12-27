@@ -1,0 +1,22 @@
+name: Run tests and linters
+
+on:
+  push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      VENV: .venv
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: make init
+    - name: Lint
+      run: make lint
+    - name: run tests
+      run: make tests

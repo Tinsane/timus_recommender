@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, Iterator
 
 import sqlalchemy as sa
@@ -9,6 +10,8 @@ from sqlalchemy.pool import StaticPool
 
 class Settings(BaseSettings):
     token: str
+    model_path: Path = Path('prod_model')
+    use_mock_model: bool = False
 
     class Config:
         env_prefix = 'TIMUS_RECOMMENDER_BOT_'

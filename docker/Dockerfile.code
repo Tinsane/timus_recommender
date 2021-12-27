@@ -1,0 +1,45 @@
+FROM python:3.8
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=on
+ENV PIP_NO_CACHE_DIR=off
+ENV PYTHONDONTWRITEBYTECODE=true
+ENV PYTHONFAULTHANDLER=true
+ENV PYTHONUNBUFFERED=true
+
+WORKDIR /code
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        vim \
+        locales \
+        procps \
+        libpq-dev \
+        make \
+        g++ \
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+    && sed -i -e 's/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/' /etc/locale.gen \
+    && locale-gen
+
+ENV LANGUAGE en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LC_ALL en_US.UTF-8
+
+COPY src/__init__.py /code/src
+COPY pyproject.toml poetry.lock /code/
+
+RUN pip install --no-compile --upgrade pip \
+ && pip install --no-compile poetry \
+ && poetry config virtualenvs.create false \
+ && poetry config cache-dir /tmp/.cache/pypoetry \
+ && poetry install --no-dev --no-interaction --no-ansi \
+ && pip uninstall --yes poetry \
+ && rm -rf /tmp/.cache/pypoetry \
+ && rm -rf /tmp/bytecode \
+ && rm -rf /code/src
+
+
+COPY src /code/src
+COPY db /code/db
+COPY bot_main.py /code/bot_main.py
