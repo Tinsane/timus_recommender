@@ -1,0 +1,12 @@
+model.zip
+prod_model/
+.idea/
+logs/
+venv/
+*.sqlite
+*.db
+token
+.mypy_cache
+__pycache__
+.coverage
+.pytest_cache
