@@ -1,5 +1,6 @@
 .PHONY : init black-lint flake8 mypy lint pretty tests
 
+SHELL := /bin/bash
 CODE = db src bot_main.py
 TESTS ?= tests
 ALL = $(CODE) $(TESTS)
