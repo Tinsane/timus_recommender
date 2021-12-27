@@ -1,8 +1,7 @@
 name: Upload docker image
 
 on:
-  release:
-    types: [published]
+  push
 
 jobs:
   deploy:
